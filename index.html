@@ -1,0 +1,385 @@
+<!-- python -m http.server 8100 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Voice API Bridge</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .main-wrapper {
+            width: 100%;
+            max-width: 900px;
+            display: grid;
+            gap: 20px;
+        }
+
+        /* Card Styles */
+        .card {
+            background: var(--card);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid var(--border);
+        }
+
+        h2 { margin-top: 0; font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
+        h3 { font-size: 1rem; color: #64748b; margin-top: 0; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;}
+
+        /* Form Grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .full-width { grid-column: span 2; }
+
+        .input-group { display: flex; flex-direction: column; gap: 6px; }
+        label { font-size: 0.85rem; font-weight: 600; color: #475569; }
+        
+        input, textarea, select {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        
+        textarea { resize: vertical; min-height: 80px; font-family: 'Courier New', monospace; font-size: 0.8rem; }
+
+        /* Audio Controls */
+        .audio-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            padding: 20px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-record { background-color: var(--danger); color: white; }
+        .btn-record:hover { background-color: #dc2626; }
+        .btn-record.recording { animation: pulse 1.5s infinite; background-color: #991b1b; }
+
+        .btn-send { background-color: var(--success); color: white; }
+        .btn-send:hover { background-color: #16a34a; }
+        .btn-send:disabled { background-color: #cbd5e1; cursor: not-allowed; }
+
+        .status-badge {
+            margin-left: auto;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #64748b;
+        }
+
+        /* Logs */
+        .log-container {
+            background: #0f172a;
+            color: #22c55e;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-wrapper">
+
+    <!-- Configuration Section -->
+    <div class="card">
+        <h2>🛠️ API Configuration</h2>
+        
+        <div class="form-grid">
+            <div class="input-group full-width">
+                <label>API Endpoint URL</label>
+                <input type="text" id="apiUrl" placeholder="http://devaiapi.sarvm.ai:8000/..." value="http://devaiapi.sarvm.ai:8000/update_catalog_wa/">
+            </div>
+
+            <div class="input-group full-width">
+                <label>Auth Key (Bearer Token)</label>
+                <input type="password" id="authKey" placeholder="Bearer eyJhbGci...">
+            </div>
+
+            <div class="input-group">
+                <label>User ID</label>
+                <input type="text" id="userId" value="dev-sarvm-cat">
+            </div>
+            <div class="input-group">
+                <label>Shop ID</label>
+                <input type="text" id="shopId" value="3411">
+            </div>
+            <div class="input-group">
+                <label>Language</label>
+                <select id="language">
+                    <option value="en">English (en)</option>
+                    <option value="hi">Hindi (hi)</option>
+                    <option value="kn">Kannada (kn)</option>
+                </select>
+            </div>
+             <div class="input-group">
+                <label>Env Name</label>
+                <input type="text" id="envName" value="Dev">
+            </div>
+            
+            <div class="input-group full-width">
+                <label>Certificate (PEM)</label>
+                <textarea id="certificate" placeholder="Paste long certificate string here..."></textarea>
+            </div>
+            
+            <div class="input-group full-width">
+                <label>Shop JSON URL</label>
+                <input type="text" id="shopJsonUrl" placeholder="https://s3...">
+            </div>
+        </div>
+    </div>
+
+    <!-- Operation Section -->
+    <div class="card">
+        <h2>🎙️ Voice Input & Execution</h2>
+        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">
+            1. Configure settings above (auto-saved).<br>
+            2. Record audio (input).<br>
+            3. System converts audio to Base64, attaches config, and POSTs to API.
+        </p>
+        
+        <div class="audio-controls">
+            <button id="recordBtn" class="btn-record">
+                <span>🎤</span> Start Recording
+            </button>
+            <button id="sendBtn" class="btn-send" disabled>
+                <span>🚀</span> Stop & Send
+            </button>
+            <span id="statusText" class="status-badge">Ready</span>
+        </div>
+    </div>
+
+    <!-- Logs Section -->
+    <div class="card">
+        <h2>📟 Server Logs</h2>
+        <div id="logs" class="log-container">System initialized. Waiting for input...</div>
+    </div>
+
+</div>
+
+<script>
+    // --- State Management for Audio ---
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+
+    // --- DOM Elements ---
+    const els = {
+        apiUrl: document.getElementById('apiUrl'),
+        authKey: document.getElementById('authKey'),
+        userId: document.getElementById('userId'),
+        shopId: document.getElementById('shopId'),
+        language: document.getElementById('language'),
+        envName: document.getElementById('envName'),
+        certificate: document.getElementById('certificate'),
+        shopJsonUrl: document.getElementById('shopJsonUrl'),
+        recordBtn: document.getElementById('recordBtn'),
+        sendBtn: document.getElementById('sendBtn'),
+        statusText: document.getElementById('statusText'),
+        logs: document.getElementById('logs')
+    };
+
+    // --- Local Storage Logic (Auto-Save) ---
+    function saveConfig() {
+        const config = {
+            apiUrl: els.apiUrl.value,
+            authKey: els.authKey.value,
+            userId: els.userId.value,
+            shopId: els.shopId.value,
+            language: els.language.value,
+            envName: els.envName.value,
+            certificate: els.certificate.value,
+            shopJsonUrl: els.shopJsonUrl.value
+        };
+        localStorage.setItem('sarvm_api_config', JSON.stringify(config));
+    }
+
+    function loadConfig() {
+        const saved = localStorage.getItem('sarvm_api_config');
+        if (saved) {
+            const config = JSON.parse(saved);
+            if(config.apiUrl) els.apiUrl.value = config.apiUrl;
+            if(config.authKey) els.authKey.value = config.authKey;
+            if(config.userId) els.userId.value = config.userId;
+            if(config.shopId) els.shopId.value = config.shopId;
+            if(config.language) els.language.value = config.language;
+            if(config.envName) els.envName.value = config.envName;
+            if(config.certificate) els.certificate.value = config.certificate;
+            if(config.shopJsonUrl) els.shopJsonUrl.value = config.shopJsonUrl;
+        }
+    }
+
+    // Add change listeners to auto-save inputs
+    Object.values(els).forEach(el => {
+        if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+            el.addEventListener('input', saveConfig);
+        }
+    });
+
+    // Load config on startup
+    loadConfig();
+
+    // --- Logging Helper ---
+    function log(msg, type = 'info') {
+        const time = new Date().toLocaleTimeString();
+        const line = document.createElement('div');
+        line.textContent = `[${time}] ${msg}`;
+        if(type === 'error') line.style.color = '#ef4444';
+        els.logs.prepend(line);
+    }
+
+    // --- Audio Logic ---
+    els.recordBtn.addEventListener('click', async () => {
+        if (isRecording) return;
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+            mediaRecorder.onstop = processAudio;
+
+            mediaRecorder.start();
+            isRecording = true;
+            els.recordBtn.innerHTML = "<span>⏹</span> Recording...";
+            els.recordBtn.classList.add('recording');
+            els.sendBtn.disabled = false;
+            els.statusText.textContent = "Recording...";
+            log("Microphone started.");
+        } catch (err) {
+            log("Mic Error: " + err.message, 'error');
+            alert("Please allow microphone access.");
+        }
+    });
+
+    els.sendBtn.addEventListener('click', () => {
+        if (!isRecording) return;
+        mediaRecorder.stop(); // Triggers processAudio
+        isRecording = false;
+        els.recordBtn.innerHTML = "<span>🎤</span> Start Recording";
+        els.recordBtn.classList.remove('recording');
+        els.sendBtn.disabled = true;
+    });
+
+    function processAudio() {
+        els.statusText.textContent = "Encoding Audio...";
+        log("Processing audio data...");
+        
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        
+        reader.onloadend = () => {
+            // Remove "data:audio/webm;base64," prefix
+            const base64Audio = reader.result.split(',')[1]; 
+            log(`Audio encoded (${base64Audio.length} chars). Sending request...`);
+            sendRequest(base64Audio);
+        };
+    }
+
+    // --- API Logic ---
+    async function sendRequest(audioBase64) {
+        els.statusText.textContent = "Sending...";
+        
+        // 1. Build Payload from UI Inputs
+        const payload = {
+            "user_id": els.userId.value,
+            "language": els.language.value,
+            "certificate": els.certificate.value, // Handles newlines from textarea automatically
+            "env_name": els.envName.value,
+            "auth_key": els.authKey.value,
+            "shop_id": els.shopId.value,
+            "shop_json_url": els.shopJsonUrl.value,
+            "audio_file": audioBase64 // The dynamic part
+        };
+
+        const endpoint = els.apiUrl.value;
+
+        // 2. Send Fetch Request
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
+                    'Connection': 'keep-alive',
+                    'Origin': 'http://localhost:8100', // Browser sets this, but for clarity
+                    'accept': 'application/x-www-form-urlencoded' 
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const resultText = await response.text();
+            
+            if(response.ok) {
+                log("✅ SERVER SUCCESS:", 'success');
+                els.statusText.textContent = "Success (200 OK)";
+            } else {
+                log(`❌ SERVER ERROR ${response.status}:`, 'error');
+                els.statusText.textContent = "Error";
+            }
+            log(resultText); // Dump full response body
+
+        } catch (error) {
+            log("❌ NETWORK ERROR: " + error.message, 'error');
+            log("Check Console (F12) for CORS details.");
+            els.statusText.textContent = "Network Error";
+        }
+    }
+</script>
+
+</body>
+</html>
